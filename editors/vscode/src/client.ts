@@ -420,7 +420,9 @@ function getGoalsEnvContent(goals : Goal[]){
     }).reduce((acc, cur) => acc + cur, "");
 }
 
-// TODO: make LambdaPi debug nonwritable by user
+// number of write operations todo on the psuedo terminal
+let ptyWriteCnt = 0;
+
 function updateTerminalText(logstr: string){
     const termName = "Lambdapi Debug";
     const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
@@ -433,16 +435,20 @@ function updateTerminalText(logstr: string){
             open: () => {},
             close: () => {},
             handleInput: (data: string) => {
-                data = data.replace(/\r/g, '\r\n');
-                writeEmitter.fire(data);
+                if(ptyWriteCnt > 0){
+                    ptyWriteCnt--;
+                    data = data.replace(/\r/g, '\r\n');
+                    writeEmitter.fire(data);
+                }
             }
         };
         term = window.createTerminal({name: termName, pty});
         term.show(true);
     }
 
-    term.sendText(clearTextSeq);
-    term.sendText(logstr);
+    // increase ptyWriteCnt to allow write operation on psuedoterminal
+    ptyWriteCnt++; term.sendText(clearTextSeq);
+    ptyWriteCnt++; term.sendText(logstr);
 }
 
 // Returns the HTML code of the panel and the inset ccontent
